@@ -1,0 +1,7 @@
+{
+  "name": "Job Application Co-Pilot",
+  "description": "An intelligent assistant to screen your resume against job descriptions. It provides a match score, highlights strengths and weaknesses, and generates a tailored cover letter draft to increase your chances of getting an interview.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
