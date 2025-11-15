@@ -34,6 +34,7 @@ This application automates your job search with a suite of powerful features:
 
 -   **Frontend**: React, TypeScript, Tailwind CSS
 -   **AI & Language Model**: Google Gemini API (`gemini-2.5-flash`)
+-   **Testing**: Playwright for end-to-end tests.
 -   **State Management**: React Hooks (`useState`, `useEffect`)
 -   **Client-side Storage**: `localStorage` for saving resume versions.
 
@@ -50,23 +51,18 @@ The project is organized into a modular structure that separates concerns, makin
 │   ├── Footer.tsx
 │   ├── Header.tsx
 │   ├── JobCard.tsx           # The card for a single job analysis
-│   ├── Loader.tsx
-│   ├── MatchResult.tsx       # Displays the analysis results
-│   ├── ResumeInput.tsx       # Handles resume upload/paste
-│   ├── ResumeQA.tsx          # Component for the screening question feature
 │   └── ...
 │
 ├── pages/                    # Page-level components
 │   ├── JobListingsPage.tsx   # The main dashboard for managing multiple jobs
-│   ├── ResumesPage.tsx       # The page for managing saved resumes
-│   ├── JobSearchPage.tsx     # The page for finding job listings
-│   ├── JobsCafePage.tsx      # Page for browsing hiring.cafe jobs
-│   └── AgenciesPage.tsx      # Placeholder for agency information
+│   └── ...
 │
 ├── services/                 # Business logic and external communication
 │   ├── geminiService.ts      # Handles all API calls to the Google Gemini API
-│   ├── apiService.ts         # Manages saving/loading resumes via a mock API
-│   └── hiringCafeService.ts  # Fetches job data from hiring.cafe
+│   └── ...
+│
+├── tests/                    # End-to-end tests
+│   └── api.spec.ts           # Playwright tests for API integrations
 │
 ├── types.ts                  # TypeScript type definitions and interfaces
 │
@@ -110,6 +106,30 @@ You need a Google Gemini API key to run this application.
     npm run dev
     ```
     This will start the development server, and you can view the application in your browser.
+
+---
+
+## Running Tests
+
+This project uses [Playwright](https://playwright.dev/) for end-to-end testing to ensure API integrations are working as expected. The tests use network mocking and do not require a real API key to run.
+
+### Setup
+
+1.  **Install Playwright browsers:**
+    ```sh
+    npx playwright install
+    ```
+
+### Running the Test Suite
+
+1.  **Start the development server:**
+    ```sh
+    npm run dev
+    ```
+2.  **Run the Playwright tests in a separate terminal:**
+    ```sh
+    npx playwright test
+    ```
 
 ---
 
