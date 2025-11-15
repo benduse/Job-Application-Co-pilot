@@ -3,14 +3,9 @@ import { SavedResume } from '../types';
 import { templateResumeContent } from '../data/defaultData';
 
 const STORAGE_KEY = 'savedResumes_db_mock';
+const API_BASE = '/api';
 
-// --- MOCK API FUNCTIONS ---
-// These functions simulate calls to a backend API that interacts with MongoDB.
-// They use localStorage as a mock database and introduce an artificial delay.
-
-/**
- * Creates the initial template resume if no data exists.
- */
+// --- LOCAL MOCK HELPERS (used as fallback when server is unavailable) ---
 const seedInitialData = () => {
     const templateResume: SavedResume = {
         _id: uuidv4(),
@@ -22,92 +17,95 @@ const seedInitialData = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([templateResume]));
 };
 
+const readLocalResumes = (): SavedResume[] => {
+    const resumesJson = localStorage.getItem(STORAGE_KEY);
+    if (!resumesJson) {
+        seedInitialData();
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as SavedResume[];
+    }
+    return JSON.parse(resumesJson) as SavedResume[];
+};
 
-/**
- * Fetches all saved resumes from the mock database.
- * Simulates: GET /api/resumes
- */
+const writeLocalResumes = (resumes: SavedResume[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(resumes));
+};
+
+// --- API functions (primary) ---
+async function tryFetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+    const resp = await fetch(input, init);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+    return (await resp.json()) as T;
+}
+
 export const getResumes = async (): Promise<SavedResume[]> => {
-    console.log("API CALL: Fetching resumes...");
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            try {
-                let resumesJson = localStorage.getItem(STORAGE_KEY);
-
-                // If no data exists, seed it with the template
-                if (!resumesJson) {
-                    console.log("API CALL: No data found. Seeding with template...");
-                    seedInitialData();
-                    resumesJson = localStorage.getItem(STORAGE_KEY);
-                }
-
-                if (!resumesJson) {
-                    resolve([]);
-                    return;
-                }
-                const resumes = JSON.parse(resumesJson) as SavedResume[];
-                // Sort by date, newest first (as a backend would)
-                const sortedResumes = resumes.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
-                console.log("API CALL: Resumes fetched successfully.");
-                resolve(sortedResumes);
-            } catch (error) {
-                console.error("Mock DB Error (getResumes):", error);
-                // In a real app, this would be a proper error object from the server
-                throw new Error("Failed to fetch resumes from the database.");
-            }
-        }, 500); // 500ms delay to simulate network latency
-    });
+    try {
+        return await tryFetchJson<SavedResume[]>(`${API_BASE}/resumes`);
+    } catch (err) {
+        console.warn('getResumes: server call failed, falling back to localStorage', err);
+        const resumes = readLocalResumes();
+        // sort by savedAt desc
+        return resumes.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+    }
 };
 
-/**
- * Saves a new resume to the mock database.
- * Simulates: POST /api/resumes
- */
 export const saveResume = async (resumeData: Omit<SavedResume, '_id' | 'savedAt'>): Promise<SavedResume> => {
-    console.log("API CALL: Saving resume...");
-    return new Promise(async (resolve, reject) => {
-        setTimeout(async () => {
-            try {
-                const existingResumes = await getResumes(); // Fetch current state
-                const newResume: SavedResume = {
-                    ...resumeData,
-                    _id: uuidv4(), // The backend/DB would generate this ID
-                    savedAt: new Date().toISOString(),
-                };
-                const updatedResumes = [newResume, ...existingResumes];
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedResumes));
-                console.log("API CALL: Resume saved successfully.", newResume);
-                resolve(newResume);
-            } catch (error) {
-                console.error("Mock DB Error (saveResume):", error);
-                reject(new Error("Failed to save the resume to the database."));
-            }
-        }, 800); // 800ms delay
-    });
+    try {
+        const created = await tryFetchJson<SavedResume>(`${API_BASE}/resumes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(resumeData),
+        });
+        return created;
+    } catch (err) {
+        console.warn('saveResume: server call failed, using localStorage fallback', err);
+        const existing = readLocalResumes();
+        const newResume: SavedResume = { ...resumeData, _id: uuidv4(), savedAt: new Date().toISOString() } as SavedResume;
+        const updated = [newResume, ...existing];
+        writeLocalResumes(updated);
+        return newResume;
+    }
 };
 
-/**
- * Deletes a resume from the mock database by its ID.
- * Simulates: DELETE /api/resumes/:id
- */
 export const deleteResume = async (id: string): Promise<{ success: boolean }> => {
-    console.log(`API CALL: Deleting resume with id: ${id}...`);
-    return new Promise(async (resolve, reject) => {
-        setTimeout(async () => {
-            try {
-                const resumes = await getResumes();
-                const updatedResumes = resumes.filter(resume => resume._id !== id);
-                if (resumes.length === updatedResumes.length) {
-                   // This means the ID was not found.
-                   throw new Error(`Resume with ID ${id} not found.`);
-                }
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedResumes));
-                console.log("API CALL: Resume deleted successfully.");
-                resolve({ success: true });
-            } catch (error) {
-                console.error("Mock DB Error (deleteResume):", error);
-                reject(new Error("Failed to delete the resume from the database."));
-            }
-        }, 600); // 600ms delay
-    });
+    try {
+        await fetch(`${API_BASE}/resumes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        return { success: true };
+    } catch (err) {
+        console.warn('deleteResume: server call failed, using localStorage fallback', err);
+        const existing = readLocalResumes();
+        const updated = existing.filter(r => r._id !== id);
+        if (updated.length === existing.length) {
+            throw new Error(`Resume with ID ${id} not found`);
+        }
+        writeLocalResumes(updated);
+        return { success: true };
+    }
+};
+
+export const updateResume = async (id: string, patch: Partial<Omit<SavedResume, '_id' | 'savedAt'>>): Promise<SavedResume> => {
+    try {
+        const updated = await tryFetchJson<SavedResume>(`${API_BASE}/resumes/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch),
+        });
+        return updated;
+    } catch (err) {
+        console.warn('updateResume: server call failed, using localStorage fallback', err);
+        const existing = readLocalResumes();
+        const idx = existing.findIndex(r => r._id === id);
+        if (idx === -1) throw new Error(`Resume with ID ${id} not found`);
+        const updated = { ...existing[idx], ...patch } as SavedResume;
+        existing[idx] = updated;
+        writeLocalResumes(existing);
+        return updated;
+    }
+};
+
+// Exported for compatibility with other modules that may still import these names
+export default {
+    getResumes,
+    saveResume,
+    deleteResume,
+    updateResume,
 };
