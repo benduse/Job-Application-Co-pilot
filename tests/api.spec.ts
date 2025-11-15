@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-// The URL for the Gemini API's generateContent method
-const API_URL_REGEX = /.*models\/gemini-2.5-flash:generateContent.*/;
+// The URL for the app's backend analyze endpoint
+const API_URL_REGEX = /\/api\/analyze/;
 
 const MOCK_SUCCESS_RESPONSE = {
     matchScore: 95,
@@ -77,7 +77,7 @@ test.describe('API Integration Tests', () => {
     await page.getByRole('button', { name: 'Analyze Match' }).first().click();
 
     // 6. Assert that a user-friendly error message is displayed in the JobCard
-    const expectedErrorMessage = "Error: Failed to get analysis from Gemini API. Please check your API key and the model's availability.";
+    const expectedErrorMessage = "Failed to analyze job fit";
     await expect(page.locator(`text=${expectedErrorMessage}`)).toBeVisible();
     
     // 7. Assert that the loading state is gone

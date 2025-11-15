@@ -95,17 +95,30 @@ You need a Google Gemini API key to run this application.
     ```sh
     npm install
     ```
-3.  **Set up your environment variables**
+3.  **Install server dependencies**
+    The project includes a small Express-based API proxy. Install the server runtime dependencies:
+    ```sh
+    npm install express cors body-parser node-fetch
+    ```
+4.  **Set up your environment variables**
 
-    Create a file named `.env` in the root of your project and add your API key:
+    Create a file named `.env` in the root of your project and add your API key (server-side env var):
     ```
-    API_KEY=YOUR_GEMINI_API_KEY
+    GEMINI_API_KEY=YOUR_GEMINI_API_KEY
     ```
-4.  **Run the application**
+
+5.  **Run the backend API proxy**
+    ```sh
+    npm run start:api
+    ```
+
+6.  **Run the frontend**
+    In a separate terminal, start the Vite dev server:
     ```sh
     npm run dev
     ```
-    This will start the development server, and you can view the application in your browser.
+
+The frontend will call the local backend endpoints (e.g., `/api/analyze`, `/api/distance`) which forward requests to the Google Gemini API using the server-side `GEMINI_API_KEY`.
 
 ---
 
